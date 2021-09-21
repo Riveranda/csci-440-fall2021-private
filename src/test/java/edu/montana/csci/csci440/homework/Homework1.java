@@ -5,24 +5,25 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class Homework1 extends DBTest {
 
     @Test
-    /*
-     * Write a query in the string below that returns all artists that have an 'A' in their name
-     */
-    void selectArtistsWhoseNameHasAnAInIt(){
+        /*
+         * Write a query in the string below that returns all artists that have an 'A' in their name
+         */
+    void selectArtistsWhoseNameHasAnAInIt() {
         List<Map<String, Object>> results = executeSQL("SELECT * FROM artists WHERE Name like '%a%'");
         assertEquals(211, results.size());
     }
 
     @Test
-    /*
-     * Write a query in the string below that returns all artists that have more than one album
-     */
-    void selectAllArtistsWithMoreThanOneAlbum(){
+        /*
+         * Write a query in the string below that returns all artists that have more than one album
+         */
+    void selectAllArtistsWithMoreThanOneAlbum() {
         List<Map<String, Object>> results = executeSQL(
                 "SELECT AR.ArtistId, AR.Name, COUNT(*) NUM_OF_ALBUM " +
                         "FROM albums AL JOIN artists AR ON AL.ArtistId = AR.ArtistId " +
