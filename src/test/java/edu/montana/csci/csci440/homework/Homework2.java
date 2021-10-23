@@ -10,13 +10,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class Homework2 extends DBTest {
 
+
+    @Test
+    public void problem1() {
+        List<Map<String, Object>> results = executeSQL(
+                "SELECT employees.FirstName, employees.LastName, employees.Title, COUNT(*) " +
+                        "from employees " +
+                        "INNER JOIN customers ON employees.EmployeeId=customers.SupportRepId; " +
+                        "WHERE FirstName LIKE 'Steve' " +
+                        "AND LastName LIKE 'Jobs'"
+        );
+
+    }
+
     @Test
     /*
      * Create a view tracksPlus to display the artist, song title, album, and genre for all tracks.
      */
-    public void createTracksPlusView(){
-        //TODO fill this in
-        executeDDL("CREATE VIEW tracksPlus");
+    public void createTracksPlusView() {
+        executeDDL(
+                "CREATE VIEW tracksPlus AS " +
+                        "SELECT genres.Name as GenreName, artists.Name as ArtistName, albums.Title as AlbumTitle, tr.TrackId " +
+                        "FROM tracks as tr " +
+                        "INNER JOIN albums ON tr.AlbumId = albums.AlbumId " +
+                        "INNER JOIN artists ON albums.ArtistId = artists.ArtistId " +
+                        "INNER JOIN genres ON tr.GenreId = genres.GenreId "
+
+        );
 
         List<Map<String, Object>> results = executeSQL("SELECT * FROM tracksPlus ORDER BY TrackId");
         assertEquals(3503, results.size());
@@ -34,10 +54,26 @@ public class Homework2 extends DBTest {
      *
      * Create a table grammy_category
      */
-    public void createGrammyInfoTable(){
+    public void createGrammyInfoTable() {
         //TODO fill these in
-        executeDDL("create table grammy_categories");
-        executeDDL("create table grammy_infos");
+        executeDDL("create table grammy_categories (" +
+                "GrammyCategoryId INTEGER NOT NULL PRIMARY KEY, " +
+                "Name varchar(255) " +
+                ");"
+        );
+
+        executeDDL("create table grammy_infos (" +
+                "Status varchar(15)," +
+                "ArtistId INTEGER ," +
+                "AlbumId INTEGER," +
+                "TrackId INTEGER," +
+                "GrammyCategoryId INTEGER," +
+                "FOREIGN KEY (ArtistId) REFERENCES artists (ArtistId)," +
+                "FOREIGN KEY (AlbumId) REFERENCES albums(AlbumId), " +
+                "FOREIGN KEY (TrackId) REFERENCES tracks(TrackId)," +
+                "FOREIGN KEY (GrammyCategoryId) REFERENCES grammy_categories(GrammyCategoryId)" +
+                ");"
+        );
 
         // TEST CODE
         executeUpdate("INSERT INTO grammy_categories(Name) VALUES ('Greatest Ever');");
@@ -57,11 +93,18 @@ public class Homework2 extends DBTest {
     /*
      * Bulk insert five categories of your choosing in the genres table
      */
-    public void bulkInsertGenres(){
+    public void bulkInsertGenres() {
         Integer before = (Integer) executeSQL("SELECT COUNT(*) as COUNT FROM genres").get(0).get("COUNT");
 
         //TODO fill this in
-        executeUpdate("INSERT");
+        executeUpdate("INSERT INTO genres(Name) " +
+                "VALUES " +
+                "(\"Smooth Jazz\")," +
+                "(\"KPop\")," +
+                "(\"Bongo Drums\")," +
+                "(\"Himalayan Screeching\")," +
+                "(\"EarBleed\");"
+        );
 
         Integer after = (Integer) executeSQL("SELECT COUNT(*) as COUNT FROM genres").get(0).get("COUNT");
         assertEquals(before + 5, after);

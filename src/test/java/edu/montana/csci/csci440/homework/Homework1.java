@@ -27,7 +27,7 @@ public class Homework1 extends DBTest {
         List<Map<String, Object>> results = executeSQL(
                 "SELECT AR.ArtistId, AR.Name, COUNT(*) NUM_OF_ALBUM " +
                         "FROM albums AL JOIN artists AR ON AL.ArtistId = AR.ArtistId " +
-                        "GROUP BY AR.ArtistID, AR.Name HAVING COUNT(*) > 1");
+                        "GROUP BY AR.ArtistID HAVING COUNT(*) > 1");
 
         assertEquals(56, results.size());
         assertEquals("AC/DC", results.get(0).get("Name"));
