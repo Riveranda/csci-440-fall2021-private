@@ -55,7 +55,6 @@ public class Homework2 extends DBTest {
      * Create a table grammy_category
      */
     public void createGrammyInfoTable() {
-        //TODO fill these in
         executeDDL("create table grammy_categories (" +
                 "GrammyCategoryId INTEGER NOT NULL PRIMARY KEY, " +
                 "Name varchar(255) " +
@@ -96,7 +95,6 @@ public class Homework2 extends DBTest {
     public void bulkInsertGenres() {
         Integer before = (Integer) executeSQL("SELECT COUNT(*) as COUNT FROM genres").get(0).get("COUNT");
 
-        //TODO fill this in
         executeUpdate("INSERT INTO genres(Name) " +
                 "VALUES " +
                 "(\"Smooth Jazz\")," +
