@@ -27,29 +27,35 @@ public class Homework3 extends DBTest {
     public void useATransactionToSafelyMoveMillisecondsFromOneTrackToAnother() throws SQLException {
 
         Track track1 = Track.find(1);
+        assert track1 != null;
         Long track1InitialTime = track1.getMilliseconds();
         Track track2 = Track.find(2);
+        assert track2 != null;
         Long track2InitialTime = track2.getMilliseconds();
 
         try(Connection connection = DB.connect()){
             connection.setAutoCommit(false);
-            PreparedStatement subtract = connection.prepareStatement("TODO");
-            subtract.setLong(1, 0);
-            subtract.setLong(2, 0);
+            PreparedStatement subtract = connection.prepareStatement("update tracks set Milliseconds = (? - 10) WHERE TrackId = ?");
+
+            subtract.setLong(1, track1InitialTime);
+            subtract.setLong(2, track1.getTrackId());
             subtract.execute();
 
-            PreparedStatement add = connection.prepareStatement("TODO");
-            subtract.setLong(1, 0);
-            subtract.setLong(2, 0);
-            subtract.execute();
+            PreparedStatement add = connection.prepareStatement("update tracks set Milliseconds = (? + 10) WHERE TrackId = ?");
+            add.setLong(1, track2InitialTime);
+            add.setLong(2, track2.getTrackId());
+            add.execute();
 
             // commit with the connection
+            connection.commit();
         }
 
         // refresh tracks from db
         track1 = Track.find(1);
         track2 = Track.find(2);
+        assert track1 != null;
         assertEquals(track1.getMilliseconds(), track1InitialTime - 10);
+        assert track2 != null;
         assertEquals(track2.getMilliseconds(), track2InitialTime + 10);
     }
 
@@ -66,7 +72,9 @@ public class Homework3 extends DBTest {
     public void selectPopularTracksAndTheirAlbums() throws SQLException {
 
         // HINT: join to invoice items and do a group by/having to get the right answer
-        List<Map<String, Object>> tracks = executeSQL("");
+        List<Map<String, Object>> tracks = executeSQL(
+                ""
+        );
         assertEquals(256, tracks.size());
 
         // HINT: join to tracks and invoice items and do a group by/having to get the right answer
