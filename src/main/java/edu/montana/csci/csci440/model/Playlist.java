@@ -26,17 +26,23 @@ public class Playlist extends Model {
 
 
     public List<Track> getTracks(){
-        try (Connection conn = DB.connect();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM playlist_track WHERE Playlistid=?"
-             )) {
-            stmt.setLong(1, playlistId);
+        String query = "SELECT t.TrackId, t.Name, t.AlbumId, t.MediaTypeId, t.GenreId, t.Composer, t.Milliseconds, t.Bytes, t.UnitPrice\n" +
+                "FROM tracks t\n" +
+                "JOIN playlist_track pt on t.TrackId = pt.TrackId\n" +
+                "JOIN playlists p on pt.PlaylistId = p.PlaylistId\n" +
+                "WHERE p.PlaylistId=?\n" +
+                "ORDER BY t.Name";
+
+        try (Connection conn = DB.connect(); PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setLong(1, this.getPlaylistId());
+
             ResultSet results = stmt.executeQuery();
-            List<Track> resultList = new LinkedList<>();
+            List<Track> tracks = new LinkedList<>();
             while (results.next()) {
-                resultList.add(new Track(results));
+                tracks.add(new Track(results));
             }
-            return resultList;
+            return tracks;
         } catch (SQLException sqlException) {
             throw new RuntimeException(sqlException);
         }
