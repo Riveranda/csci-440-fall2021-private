@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,8 +26,20 @@ public class Playlist extends Model {
 
 
     public List<Track> getTracks(){
-        // TODO implement, order by track name
-        return Collections.emptyList();
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT * FROM playlist_track WHERE Playlistid=?"
+             )) {
+            stmt.setLong(1, playlistId);
+            ResultSet results = stmt.executeQuery();
+            List<Track> resultList = new LinkedList<>();
+            while (results.next()) {
+                resultList.add(new Track(results));
+            }
+            return resultList;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
     }
 
     public Long getPlaylistId() {
@@ -48,11 +61,12 @@ public class Playlist extends Model {
     public static List<Playlist> all(int page, int count) {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM playlists LIMIT ?"
+                     "SELECT * FROM playlists LIMIT ? OFFSET ?"
              )) {
             stmt.setInt(1, count);
+            stmt.setInt(2, count * (page - 1));
             ResultSet results = stmt.executeQuery();
-            List<Playlist> resultList = new LinkedList<>();
+            List<Playlist> resultList = new ArrayList<>();
             while (results.next()) {
                 resultList.add(new Playlist(results));
             }

@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -64,15 +65,63 @@ public class Album extends Model {
     public static List<Album> all(int page, int count) {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM albums LIMIT ?"
+                     "SELECT * FROM albums LIMIT ? OFFSET ?"
              )) {
             stmt.setInt(1, count);
+            stmt.setInt(2, count * (page - 1));
             ResultSet results = stmt.executeQuery();
-            List<Album> resultList = new LinkedList<>();
+            List<Album> resultList = new ArrayList<>();
             while (results.next()) {
                 resultList.add(new Album(results));
             }
             return resultList;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
+    }
+
+    @Override
+    public boolean create() {
+        if(verify()) {
+            try (Connection conn = DB.connect();
+                 PreparedStatement stmt = conn.prepareStatement(
+                         "INSERT INTO albums (Title, ArtistId) VALUES (?, ?)"
+                 )) {
+                stmt.setString(1, title);
+                stmt.setLong(2, artistId);
+                int result = stmt.executeUpdate();
+                albumId = DB.getLastID(conn);
+                return result == 1;
+            } catch (SQLException sqlException) {
+                throw new RuntimeException(sqlException);
+            }
+        }
+        else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean verify() {
+        _errors.clear();
+        if(artistId == null || artistId == 0)
+            addError("Null AlbumId");
+        if(title == null || title.equals(""))
+            addError("Null Title");
+        return !hasErrors();
+    }
+
+    @Override
+    public boolean update() {
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE albums SET Title=?, ArtistId=? WHERE AlbumId=?"
+             )) {
+            stmt.setString(1, title);
+            stmt.setLong(2, artistId);
+            stmt.setLong(3, albumId);
+            int result = stmt.executeUpdate();
+            return result == 1;
         } catch (SQLException sqlException) {
             throw new RuntimeException(sqlException);
         }

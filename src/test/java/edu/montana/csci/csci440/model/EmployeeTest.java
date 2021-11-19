@@ -38,7 +38,6 @@ public class EmployeeTest extends DBTest {
         emp.setTitle("Programmer");
         emp.setEmail("demo@test.com");
         emp.setReportsTo(Employee.find(1));
-
         assertNull(emp.getEmployeeId());
         emp.create();
         assertNotNull(emp.getEmployeeId());

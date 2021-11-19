@@ -6,10 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class Artist extends Model {
 
@@ -51,15 +48,57 @@ public class Artist extends Model {
     public static List<Artist> all(int page, int count) {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM artists LIMIT ?"
+                     "SELECT * FROM artists LIMIT ? OFFSET ?"
              )) {
             stmt.setInt(1, count);
+            stmt.setInt(2, count * (page - 1));
             ResultSet results = stmt.executeQuery();
-            List<Artist> resultList = new LinkedList<>();
+            List<Artist> resultList = new ArrayList<>();
             while (results.next()) {
                 resultList.add(new Artist(results));
             }
             return resultList;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
+    }
+    @Override
+    public boolean create() {
+        if(verify()) {
+            try (Connection conn = DB.connect();
+                 PreparedStatement stmt = conn.prepareStatement(
+                         "INSERT INTO artists (Name) VALUES (?)"
+                 )) {
+                stmt.setString(1, name);
+                int result = stmt.executeUpdate();
+                artistId = DB.getLastID(conn);
+                return result == 1;
+            } catch (SQLException sqlException) {
+                throw new RuntimeException(sqlException);
+            }
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean verify() {
+        _errors.clear();
+        if(name == null || name.equals(""))
+            addError("Null Name");
+        return !hasErrors();
+    }
+
+    @Override
+    public boolean update() {
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE artists SET Name=? WHERE ArtistId=?"
+             )) {
+            stmt.setString(1, name);
+            stmt.setLong(2, artistId);
+            int result = stmt.executeUpdate();
+            return result == 1;
         } catch (SQLException sqlException) {
             throw new RuntimeException(sqlException);
         }

@@ -4,10 +4,8 @@ import edu.montana.csci.csci440.util.DB;
 
 import java.math.BigDecimal;
 import java.sql.*;
-import java.util.Collections;
+import java.util.*;
 import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 
 public class Invoice extends Model {
 
@@ -30,12 +28,26 @@ public class Invoice extends Model {
         billingPostalCode = results.getString("BillingPostalCode");
         total = results.getBigDecimal("Total");
         invoiceId = results.getLong("InvoiceId");
+        billingCity = results.getString("BillingCity");
     }
 
     public List<InvoiceItem> getInvoiceItems(){
-        //TODO implement
-        return Collections.emptyList();
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT * FROM invoice_items WHERE InvoiceId=?"
+             )) {
+            stmt.setLong(1, invoiceId);
+            ResultSet results = stmt.executeQuery();
+            List<InvoiceItem> resultList = new LinkedList<>();
+            while (results.next()) {
+                resultList.add(new InvoiceItem(results));
+            }
+            return resultList;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
     }
+
     public Customer getCustomer() {
         return null;
     }
@@ -99,11 +111,12 @@ public class Invoice extends Model {
     public static List<Invoice> all(int page, int count) {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM invoices LIMIT ?"
+                     "SELECT * FROM invoices LIMIT ? OFFSET ?"
              )) {
             stmt.setInt(1, count);
+            stmt.setInt(2, count * (page - 1));
             ResultSet results = stmt.executeQuery();
-            List<Invoice> resultList = new LinkedList<>();
+            List<Invoice> resultList = new ArrayList<>();
             while (results.next()) {
                 resultList.add(new Invoice(results));
             }
