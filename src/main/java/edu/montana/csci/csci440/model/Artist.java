@@ -12,12 +12,14 @@ public class Artist extends Model {
 
     Long artistId;
     String name;
+    String originalName;
 
     public Artist() {
     }
 
     private Artist(ResultSet results) throws SQLException {
         name = results.getString("Name");
+        originalName = results.getString("Name");
         artistId = results.getLong("ArtistId");
     }
 
@@ -88,15 +90,15 @@ public class Artist extends Model {
             addError("Null Name");
         return !hasErrors();
     }
-
     @Override
     public boolean update() {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
-                     "UPDATE artists SET Name=? WHERE ArtistId=?"
+                     "UPDATE artists SET Name=? WHERE Name=? AND ArtistId=?"
              )) {
             stmt.setString(1, name);
-            stmt.setLong(2, artistId);
+            stmt.setString(2, originalName);
+            stmt.setLong(3, artistId);
             int result = stmt.executeUpdate();
             return result == 1;
         } catch (SQLException sqlException) {

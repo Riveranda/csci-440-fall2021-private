@@ -10,10 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class Track extends Model {
 
@@ -25,14 +22,16 @@ public class Track extends Model {
     private Long milliseconds;
     private Long bytes;
     private BigDecimal unitPrice;
+    private String albumName;
+    private String artistName;
 
     public static final String REDIS_CACHE_KEY = "cs440-tracks-count-cache";
 
     public Track() {
         mediaTypeId = 1l;
         genreId = 1l;
-        milliseconds  = 0l;
-        bytes  = 0l;
+        milliseconds = 0l;
+        bytes = 0l;
         unitPrice = new BigDecimal("0");
     }
 
@@ -45,6 +44,8 @@ public class Track extends Model {
         albumId = results.getLong("AlbumId");
         mediaTypeId = results.getLong("MediaTypeId");
         genreId = results.getLong("GenreId");
+        albumName = getAlbum().getTitle(); //cached these here
+        artistName = getAlbum().getArtist().getName();
     }
 
     public static Track find(long i) {
@@ -63,12 +64,18 @@ public class Track extends Model {
     }
 
     public static Long count() {
-        Jedis redisClient = new Jedis(); // use this class to access redis and create a cache
+        Jedis redisClient = new Jedis();// use this class to access redis and create a cache
+        if(redisClient.exists(REDIS_CACHE_KEY)) {
+            return Long.parseLong(redisClient.get(REDIS_CACHE_KEY));
+        }
+
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) as Count FROM tracks")) {
             ResultSet results = stmt.executeQuery();
             if (results.next()) {
-                return results.getLong("Count");
+                long c = results.getLong("Count");
+                redisClient.set(REDIS_CACHE_KEY, String.valueOf(results.getLong("Count")));
+                return c;
             } else {
                 throw new IllegalStateException("Should find a count!");
             }
@@ -84,11 +91,29 @@ public class Track extends Model {
     public MediaType getMediaType() {
         return null;
     }
+
     public Genre getGenre() {
         return null;
     }
-    public List<Playlist> getPlaylists(){
-        return Collections.emptyList();
+
+    public List<Playlist> getPlaylists() {
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "SELECT playlist_track.PlaylistId, Name " +
+                     "FROM playlist_track " +
+                     "JOIN playlists ON " +
+                     "playlists.PlaylistId = playlist_track.PlaylistId " +
+                     "WHERE TrackId = ?")) {
+            stmt.setLong(1, trackId);
+            ResultSet results = stmt.executeQuery();
+            List<Playlist> resultList = new LinkedList<>();
+            while (results.next()) {
+                resultList.add(new Playlist(results));
+            }
+            return resultList;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
     }
 
     public Long getTrackId() {
@@ -160,15 +185,11 @@ public class Track extends Model {
     }
 
     public String getArtistName() {
-        // TODO implement more efficiently
-        //  hint: cache on this model object
-        return getAlbum().getArtist().getName();
+        return this.artistName;
     }
 
     public String getAlbumTitle() {
-        // TODO implement more efficiently
-        //  hint: cache on this model object
-        return getAlbum().getTitle();
+        return this.albumName;
     }
 
     public static List<Track> advancedSearch(int page, int count,
@@ -250,14 +271,15 @@ public class Track extends Model {
         return all(page, count, "TrackId");
     }
 
-    public static List<Track> all(int page, int count, String orderBy) {
+    public static List<Track> all(int page, int count, String OrderBy) {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM tracks LIMIT ?"
+                     "SELECT * FROM tracks ORDER BY " + OrderBy + " LIMIT ? OFFSET ?"
              )) {
             stmt.setInt(1, count);
+            stmt.setInt(2, count * (page - 1));
             ResultSet results = stmt.executeQuery();
-            List<Track> resultList = new LinkedList<>();
+            List<Track> resultList = new ArrayList<>();
             while (results.next()) {
                 resultList.add(new Track(results));
             }
@@ -267,4 +289,80 @@ public class Track extends Model {
         }
     }
 
+    @Override
+    public boolean create() {
+        Jedis jedisClient = new Jedis();
+        if (verify()) {
+            try (Connection conn = DB.connect();
+                 PreparedStatement stmt = conn.prepareStatement(
+                         "INSERT INTO tracks (Name, AlbumId, MediaTypeId, GenreId," +
+                                 " Milliseconds, Bytes, UnitPrice) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                 )) {
+                stmt.setString(1, name);
+                stmt.setLong(2, albumId);
+                stmt.setLong(3, mediaTypeId);
+                stmt.setLong(4, genreId);
+                stmt.setLong(5, milliseconds);
+                stmt.setLong(6, bytes);
+                stmt.setBigDecimal(7, unitPrice);
+                int result = stmt.executeUpdate();
+                trackId = DB.getLastID(conn);
+                jedisClient.del(REDIS_CACHE_KEY);
+                return result == 1;
+            } catch (SQLException sqlException) {
+                throw new RuntimeException(sqlException);
+            }
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean verify() {
+        _errors.clear();
+        if (name == null || name.equals("")) {
+            addError("Name cannot be null");
+        }
+        if (albumId == null || albumId == 0) {
+            addError("AlbumId cannot be null");
+        }
+        return !hasErrors();
+    }
+
+    @Override
+    public void delete() {
+        Jedis jedis = new Jedis();
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "DELETE FROM tracks WHERE trackid = ?"
+             )) {
+            stmt.setLong(1, trackId);
+            stmt.executeUpdate();
+            jedis.del(REDIS_CACHE_KEY);
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
+    }
+
+    @Override
+    public boolean update() {
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "UPDATE tracks SET Name=?, AlbumId=?, MediaTypeId=?, GenreId=?," +
+                             " Milliseconds=?, Bytes=?, UnitPrice=? WHERE TrackId=?"
+             )) {
+            stmt.setString(1, name);
+            stmt.setLong(2, albumId);
+            stmt.setLong(3, mediaTypeId);
+            stmt.setLong(4, genreId);
+            stmt.setLong(5, milliseconds);
+            stmt.setLong(6, bytes);
+            stmt.setBigDecimal(7, unitPrice);
+            stmt.setLong(8, trackId);
+            int result = stmt.executeUpdate();
+            return result == 1;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
+    }
 }
