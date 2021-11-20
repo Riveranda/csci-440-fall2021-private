@@ -22,6 +22,15 @@ public class CustomerTest extends DBTest {
     }
 
     @Test
+    void getInvoicesWorks(){
+        Customer c = Customer.find(1);
+        List<Invoice> invoices = c.getInvoices();
+        assertNotNull(invoices);
+        assertEquals(7, invoices.size());
+        assertEquals("Av. Brigadeiro Faria Lima, 2170", invoices.get(1).billingAddress);
+    }
+
+    @Test
     void testPagingWorks() {
         assertEquals(25, Customer.all(0, 25).size());
         assertEquals(25, Customer.all(2, 25).size());

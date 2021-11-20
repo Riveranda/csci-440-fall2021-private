@@ -35,10 +35,10 @@ public class Employee extends Model {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
                      "SELECT e.FirstName, e.LastName, e.Email, COUNT(*) as SalesCount, ROUND(SUM(inv.Total), 2) as SalesTotal\n" +
-                     "FROM invoices AS inv\n" +
-                     "JOIN customers c on inv.CustomerId = c.CustomerId\n" +
-                     "JOIN employees e on c.SupportRepId = e.EmployeeId\n" +
-                     "GROUP BY e.EmployeeId")) {
+                             "FROM invoices AS inv\n" +
+                             "JOIN customers c on inv.CustomerId = c.CustomerId\n" +
+                             "JOIN employees e on c.SupportRepId = e.EmployeeId\n" +
+                             "GROUP BY e.EmployeeId")) {
             ResultSet results = stmt.executeQuery();
             List<Employee.SalesSummary> resultList = new LinkedList<>();
             while (results.next()) {
@@ -177,16 +177,13 @@ public class Employee extends Model {
 
     public Employee getBoss() {
         try (Connection conn = DB.connect();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM employees WHERE EmployeeId = ?"
-             )) {
-            stmt.setLong(1, reportsTo);
+             PreparedStatement stmt = conn.prepareStatement("SELECT * from employees WHERE EmployeeId=?")) {
+            stmt.setLong(1, this.getReportsTo());
             ResultSet results = stmt.executeQuery();
-            Employee boss = null;
-            while (results.next()) {
-                boss = new Employee(results);
+            if (results.next()) {
+                return new Employee(results);
             }
-            return boss;
+            return null;
         } catch (SQLException sqlException) {
             throw new RuntimeException(sqlException);
         }
@@ -288,5 +285,7 @@ public class Employee extends Model {
         public BigDecimal getSalesTotals() {
             return salesTotals;
         }
+
+
     }
 }

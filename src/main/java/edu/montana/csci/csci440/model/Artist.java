@@ -121,4 +121,5 @@ public class Artist extends Model {
         }
     }
 
+
 }

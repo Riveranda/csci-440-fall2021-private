@@ -1,8 +1,8 @@
 package edu.montana.csci.csci440.controller;
 
-import edu.montana.csci.csci440.model.Artist;
 import edu.montana.csci.csci440.model.Track;
 import edu.montana.csci.csci440.util.Web;
+import redis.clients.jedis.Jedis;
 
 import java.util.List;
 
@@ -40,8 +40,16 @@ public class TracksController {
             } else {
                 tracks = Track.all(Web.getPage(), Web.PAGE_SIZE, orderBy);
             }
-            // TODO - implement cache of count w/ Redis
-            long totalTracks = Track.count();
+            Jedis jedis = new Jedis();
+            long totalTracks;
+            if(jedis.exists(Track.REDIS_CACHE_KEY)){
+                totalTracks = Long.parseLong(jedis.get(Track.REDIS_CACHE_KEY));
+            }
+            else {
+                totalTracks = Track.count();
+                jedis.set(Track.REDIS_CACHE_KEY, Long.toString(totalTracks));
+            }
+
             return Web.renderTemplate("templates/tracks/index.vm",
                     "tracks", tracks, "totalTracks", totalTracks);
         });

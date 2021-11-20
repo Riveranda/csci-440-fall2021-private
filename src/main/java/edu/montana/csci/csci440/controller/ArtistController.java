@@ -40,7 +40,7 @@ public class ArtistController {
         get("/artists/:id", (req, resp) -> {
             Artist artist = Artist.find(Integer.parseInt(req.params(":id")));
             return Web.renderTemplate("templates/artists/show.vm",
-                    "artist", artist);
+                    "artist", artist, "");
         });
 
         /* UPDATE */

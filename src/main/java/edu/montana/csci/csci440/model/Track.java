@@ -65,7 +65,7 @@ public class Track extends Model {
 
     public static Long count() {
         Jedis redisClient = new Jedis();// use this class to access redis and create a cache
-        if(redisClient.exists(REDIS_CACHE_KEY)) {
+        if (redisClient.exists(REDIS_CACHE_KEY)) {
             return Long.parseLong(redisClient.get(REDIS_CACHE_KEY));
         }
 
@@ -100,10 +100,10 @@ public class Track extends Model {
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(
                      "SELECT playlist_track.PlaylistId, Name " +
-                     "FROM playlist_track " +
-                     "JOIN playlists ON " +
-                     "playlists.PlaylistId = playlist_track.PlaylistId " +
-                     "WHERE TrackId = ?")) {
+                             "FROM playlist_track " +
+                             "JOIN playlists ON " +
+                             "playlists.PlaylistId = playlist_track.PlaylistId " +
+                             "WHERE TrackId = ?")) {
             stmt.setLong(1, trackId);
             ResultSet results = stmt.executeQuery();
             List<Playlist> resultList = new LinkedList<>();
@@ -197,7 +197,13 @@ public class Track extends Model {
                                              Integer maxRuntime, Integer minRuntime) {
         LinkedList<Object> args = new LinkedList<>();
 
-        String query = "SELECT * FROM tracks " +
+        String query = "SELECT ";
+
+        if (maxRuntime != null) {
+            query += "/*+ MAX_EXECUTION_TIME(" + maxRuntime + ") */";
+        }
+
+        query += "* FROM tracks " +
                 "JOIN albums ON tracks.AlbumId = albums.AlbumId " +
                 "WHERE name LIKE ?";
         args.add("%" + search + "%");
@@ -207,9 +213,13 @@ public class Track extends Model {
             query += " AND ArtistId=? ";
             args.add(artistId);
         }
-
-        query += " LIMIT ?";
+        if (albumId != null) {
+            query += " AND AlbumId=? ";
+            args.add(albumId);
+        }
+        query += " LIMIT ? OFFSET ?";
         args.add(count);
+        args.add(count * (page - 1));
 
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -229,12 +239,13 @@ public class Track extends Model {
     }
 
     public static List<Track> search(int page, int count, String orderBy, String search) {
-        String query = "SELECT * FROM tracks WHERE name LIKE ? LIMIT ?";
+        String query = "SELECT * FROM tracks ORDER BY " + orderBy + " LIKE ? LIMIT ? OFFSET ?";
         search = "%" + search + "%";
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, search);
             stmt.setInt(2, count);
+            stmt.setInt(3, (page - 1) * count);
             ResultSet results = stmt.executeQuery();
             List<Track> resultList = new LinkedList<>();
             while (results.next()) {
@@ -272,10 +283,15 @@ public class Track extends Model {
     }
 
     public static List<Track> all(int page, int count, String OrderBy) {
+        String query = "SELECT tracks.*, albums.Title as AlbumTitle, artists.Name as ArtistName " +
+                "    FROM tracks " +
+                "    JOIN albums on tracks.AlbumId = albums.AlbumId " +
+                "    JOIN artists on albums.ArtistId = artists.ArtistId " +
+                "    ORDER BY " + OrderBy + " " +
+                "    LIMIT ? OFFSET ?";
+
         try (Connection conn = DB.connect();
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT * FROM tracks ORDER BY " + OrderBy + " LIMIT ? OFFSET ?"
-             )) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, count);
             stmt.setInt(2, count * (page - 1));
             ResultSet results = stmt.executeQuery();

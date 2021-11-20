@@ -23,6 +23,10 @@
         <td>$!employee.email</td>
     </tr>
     </tbody>
+    <tr>
+        <td>Boss</td>
+        <td><a href="/employees/$!employee.Boss.EmployeeId">$!employee.Boss.Email</a></td>
+    </tr>
 </table>
 
 <h3>Customers</h3>

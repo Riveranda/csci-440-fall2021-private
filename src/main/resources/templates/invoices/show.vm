@@ -56,9 +56,11 @@
             <td>$!item.Quantity</td>
         </tr>
         #end
-        $web.pagingWidget($invoice.InvoiceItems)
     </tbody>
 </table>
+
+$web.pagingWidget($invoice.InvoiceItems)
+
 
 
 

@@ -143,8 +143,18 @@ public class Album extends Model {
     }
 
     public static List<Album> getForArtist(Long artistId) {
-        // TODO implement
-        return Collections.emptyList();
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM albums WHERE ArtistId=?")) {
+            stmt.setLong(1, artistId);
+            ResultSet results = stmt.executeQuery();
+            List<Album> albums = new LinkedList<>();
+            while (results.next()) {
+                albums.add( new Album(results));
+            }
+            return albums;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
     }
 
 }
