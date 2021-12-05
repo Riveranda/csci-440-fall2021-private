@@ -23,7 +23,7 @@ public class Artist extends Model {
         artistId = results.getLong("ArtistId");
     }
 
-    public List<Album> getAlbums(){
+    public List<Album> getAlbums() {
         return Album.getForArtist(artistId);
     }
 
@@ -64,9 +64,10 @@ public class Artist extends Model {
             throw new RuntimeException(sqlException);
         }
     }
+
     @Override
     public boolean create() {
-        if(verify()) {
+        if (verify()) {
             try (Connection conn = DB.connect();
                  PreparedStatement stmt = conn.prepareStatement(
                          "INSERT INTO artists (Name) VALUES (?)"
@@ -86,10 +87,11 @@ public class Artist extends Model {
     @Override
     public boolean verify() {
         _errors.clear();
-        if(name == null || name.equals(""))
+        if (name == null || name.equals(""))
             addError("Null Name");
         return !hasErrors();
     }
+
     @Override
     public boolean update() {
         try (Connection conn = DB.connect();
@@ -101,6 +103,18 @@ public class Artist extends Model {
             stmt.setLong(3, artistId);
             int result = stmt.executeUpdate();
             return result == 1;
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
+        }
+    }
+
+    @Override
+    public void delete() {
+        try (Connection conn = DB.connect();
+             PreparedStatement stmt = conn.prepareStatement(
+                     "DELETE FROM artists WHERE ArtistId=?")) {
+            stmt.setLong(1, this.getArtistId());
+            stmt.executeUpdate();
         } catch (SQLException sqlException) {
             throw new RuntimeException(sqlException);
         }
