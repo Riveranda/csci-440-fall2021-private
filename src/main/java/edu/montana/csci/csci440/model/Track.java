@@ -28,10 +28,10 @@ public class Track extends Model {
     public static final String REDIS_CACHE_KEY = "cs440-tracks-count-cache";
 
     public Track() {
-        mediaTypeId = 1l;
-        genreId = 1l;
-        milliseconds = 0l;
-        bytes = 0l;
+        mediaTypeId = 1L;
+        genreId = 1L;
+        milliseconds = 0L;
+        bytes = 0L;
         unitPrice = new BigDecimal("0");
     }
 
@@ -239,13 +239,20 @@ public class Track extends Model {
     }
 
     public static List<Track> search(int page, int count, String orderBy, String search) {
-        String query = "SELECT * FROM tracks ORDER BY " + orderBy + " WHERE Name LIKE ? LIMIT ? OFFSET ?";
+        String query = "SELECT * FROM tracks JOIN albums ON tracks.AlbumId=albums.AlbumId ";
+        if(orderBy != null){
+            query += " GROUP BY " + search;
+        }
+        query += " WHERE tracks.Name LIKE ? OR tracks.Composer LIKE ? OR albums.Title LIKE ? LIMIT ? OFFSET ?";
+
         search = "%" + search + "%";
         try (Connection conn = DB.connect();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, search);
-            stmt.setInt(2, count);
-            stmt.setInt(3, (page - 1) * count);
+            stmt.setString(2, search);
+            stmt.setString(3, search);
+            stmt.setInt(4, count);
+            stmt.setInt(5, (page - 1) * count);
             ResultSet results = stmt.executeQuery();
             List<Track> resultList = new LinkedList<>();
             while (results.next()) {
